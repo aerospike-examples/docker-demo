@@ -1,82 +1,89 @@
-# docker-demo
-Demo's for Docker
-# mongodb
-This will build a shareded cluster, backed with two replica sets with three memebrs each
+# Orchestration & Networking demo
 
-## Instructions
+## Cavets
+* has been tested on os-x 10.10 and 10.11
+* scripts will create machines based on the vmwarefusion driver. If you don't have that, then you will need to make some changes
+* because boot2docker.iso is used, the locations of files will change if you use Ubuntu or something else. 
 
-See prov.sh
+## Preparation
 
-Create a machine in order to do the work from
+Create dev environment:
 
-```
-docker-machine create -d virtualbox --virtualbox-boot2docker-url https://github.com/tianon/boot2docker/releases/download/v1.7.0-rc1/boot2docker.iso dev2
-eval "$(docker-machine env dev2)"
-```
+    $ cd common
+    $ scripts/create-dev.sh
+    $ echo "$(docker-machine ip dev) dev.myapp.com" | sudo tee -a /etc/hosts
 
-Generate the Swarm token
+Create a Swarm:
 
-```
-docker run --rm swarm create 
-483461990bff729ff6d7e57316a5ad10
+    $ eval $(docker-machine env dev)
+    $ scripts/create-swarm.sh
+    $ echo "$(docker-machine ip swarm-0) prod.myapp.com" | sudo tee -a /etc/hosts
 
-sid=483461990bff729ff6d7e57316a5ad10
-```
+Start the Viz:
 
-Start the Swarm master
+     $ cd common/viz
+     $ source scripts/setup.sh
+     $ scripts/up.sh swarm-0
+     $ echo "$(docker-machine ip swarm-consul) viz.myapp.com" | sudo tee -a /etc/hosts
 
-```
-docker-machine create -d virtualbox --virtualbox-boot2docker-url https://github.com/tianon/boot2docker/releases/download/v1.7.0-rc4/boot2docker.iso --swarm-image "swarm:0.3.0-rc2" --swarm --swarm-master --swarm-discovery token://$sid mongodb-swarm
-```
+The app will be available at http://viz.amyapp.com:3000    
 
-Start the other docker hosts that represent the cluster
+## Running demo - Part One: Scale the app
 
-```
-eval "$(docker-machine env --swarm mongodb-swarm)"
+To start app in development:
 
-docker-machine create -d virtualbox --virtualbox-boot2docker-url https://github.com/tianon/boot2docker/releases/download/v1.7.0-rc4/boot2docker.iso --swarm-image "swarm:0.3.0-rc2" --swarm --swarm-discovery token://$sid mongodb-server1
+    $ cd dev/
+    $ source scripts/setup.sh
+    $ docker-compose build
+    $ docker-compose up
 
-docker-machine create -d virtualbox --virtualbox-boot2docker-url https://github.com/tianon/boot2docker/releases/download/v1.7.0-rc4/boot2docker.iso --swarm-image "swarm:0.3.0-rc2" --swarm --swarm-discovery token://$sid mongodb-server2 
+The app will be available at http://dev.myapp.com:5000
 
-docker-machine create -d virtualbox --virtualbox-boot2docker-url https://github.com/tianon/boot2docker/releases/download/v1.7.0-rc4/boot2docker.iso --swarm-image "swarm:0.3.0-rc2" --swarm --swarm-discovery token://$sid mongodb-server3
-```
+To start app in production:
 
-Start all the containers that represent the memebrs of the relica sets and the config servers
-- rs1 - memebers s1rs1a, s1rs1b, s1rs1c
-- rs2 - memebers s2rs2a, s2rs2a, s2rs2a
-- confi1, config2, config3
+    $ cd prod/
+    $ source scripts/setup.sh
+    $ docker $(docker-machine config --swarm swarm-0) network create --driver overlay --internal prod
+    $ docker-compose up -d
+    $ docker $(docker-machine config swarm-0) network connect prod prod_haproxy_1
+    $ docker $(docker-machine config swarm-0) network connect prod prod_discovery_1
+    $ docker-compose scale web=5
 
-```
-docker-compose -f mdb.yaml up
-```
+The app will be available at http://prod.myapp.com
 
-See the containers
+You can log onto the Aerospike and look at data with aql
 
-```
-docker ps
-```
+    $ docker run -it --rm --net prod aerospike/aerospike-tools aql -h prod_aerospike_1
 
-Run the pythion script to build the ReplicaSet config and initaite the sets
+    aql> select * from test.votes
+    aql> select * from test.summary
 
-```
-python mdb.py
-```
+## Running demo - Part Two: Scale the DB
 
-Run the generated yaml file to start the mongos (switch process)
+    $ docker-compose scale aerospike=3
 
-```
-docker-compose -f switch.yaml up
-```
+You can look at the cluster topology with
 
-Copy the script that will build the sharded system and insert some data
+    $ docker run -it --rm --net prod aerospike/aerospike-tools asadm -e i -h prod_aerospike_1
 
-```
-docker-machine scp app.js mongodb-swarm:/home/docker/
-```
 
-Finally run the mongo shell with the script
 
-```
-docker run -t -i -v /home/docker:/data/scripts -e "affinity:com.docker.examples.mongodb.mongos==true" --name app alvinr/mongo 192.168.99.111:32017 /data/scripts/app.js
-```
+# Building the images
+If you want to rebuild the images for any reason, you will need to build, push and update the compose files as necessary (since you will push to a new repo)
 
+## Build the web app
+
+    $ HUB_USER="my hub user"
+    $ cd dev
+    $ eval "$(docker-machine env dev)"
+    $ docker build -t $HUB_USER/demo-webapp-as .
+    $ docker push $HUB_USER/demo-webapp-as
+
+## Build the aerospike images
+
+    $ HUB_USER="my hub user"
+
+    $ cd aerospike
+    $ eval "$(docker-machine env dev)"
+    $ docker build -t $HUB_USER/aerospike-server .
+    $ docker push $HUB_USER/aerospike-server
