@@ -12,7 +12,9 @@ Second, you want to scale out the application. Building an app with a separate N
 
 Then, scaling both the app layers and the aerospike layers are shown.
 
-This has been tested on Docker 1.11 and 1.12 . Recent improvements in Swarm keep making the demo shorter and sweeter !
+This has been tested on Docker 1.11 and 1.12 , running on MacOS 10.10 and 10.11 . 
+
+Recent improvements in Swarm keep making the demo shorter and sweeter, and pull requests are gratefully accepted. Especially the ones that use the Mac's native virtualization system instead of VMware.
 
 # Orchestration & Networking demo
 
