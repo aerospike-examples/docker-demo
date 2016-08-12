@@ -2,6 +2,12 @@
 
 Please see the README.md at the root of this project.
 
+This is a second app. It works with the same set of instructions in the root project as the vote app --- but it counts.
+
+Look at those intructions, but just execute them in the count directories here.
+
+Enjoy!
+
 # Amazon EC2 - WORK IN PROGRESS!
 
 Some work has been done to make this demo work on EC2. You will need to setup a VPC and configure it correctly (blog post is in the works). Creating through the "VPC Wizard" is the simplest way to get this right. The swarm can be created on EC2 thus

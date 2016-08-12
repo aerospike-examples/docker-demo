@@ -16,6 +16,9 @@ This has been tested on Docker 1.11 and 1.12 , running on MacOS 10.10 and 10.11 
 
 Recent improvements in Swarm keep making the demo shorter and sweeter, and pull requests are gratefully accepted. Especially the ones that use the Mac's native virtualization system instead of VMware.
 
+( this codebase includes two demo applicatios - vote and count. Vote is the cool one that's an internet poll voting 
+application. Count is a web counter, which is also kind of cool - and maybe more useful. Feel free to examine that code. )
+
 # Orchestration & Networking demo
 
 ## Cavets
@@ -51,7 +54,7 @@ The voting app will be available at http://viz.myapp.com:3000
 
 To start app in development:
 
-    $ cd aerospike/count/dev/
+    $ cd aerospike/vote/dev/
     $ source scripts/setup.sh
     $ docker-compose build
     $ docker-compose up
@@ -60,7 +63,7 @@ The app will be available at http://dev.myapp.com:5000
 
 ## Run the app in production, and scale the app tier
 
-    $ cd aerospike/count/prod/
+    $ cd aerospike/vote/prod/
     $ source scripts/setup.sh
     $ docker $(docker-machine config --swarm swarm-0) network create --driver overlay --internal prod
     $ docker-compose up -d
